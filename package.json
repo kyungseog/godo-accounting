@@ -1,0 +1,26 @@
+{
+  "name": "godo-accounting",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyungseog/godo-accounting.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kyungseog/godo-accounting/issues"
+  },
+  "homepage": "https://github.com/kyungseog/godo-accounting#readme",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "exceljs": "^4.3.0",
+    "googleapis": "^108.0.0",
+    "mysql": "^2.18.1"
+  }
+}

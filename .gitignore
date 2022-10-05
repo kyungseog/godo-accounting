@@ -102,3 +102,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# apikey file
+apikey.json
+
+# excel file
+정산서/
