@@ -39,7 +39,7 @@ async function gsRead(client) {
   const gsapi = google.sheets({version : 'v4', auth : client});
   const readOption = {
       spreadsheetId: spreadsheetId,
-      range: paidCheckYear + '-' + paidCheckMonth + '!A5:U280' //해당월의 데이터 범위(정산업체수가 300개를 넘어갈 경우 더 늘려야함)
+      range: paidCheckYear + '-' + paidCheckMonth + '!A5:U283' //해당월의 데이터 범위(정산업체수가 300개를 넘어갈 경우 더 늘려야함)
   };
   let data = await gsapi.spreadsheets.values.get(readOption);
   let scmNoArray = data.data.values.map( r => [r[0], r[1]] );
@@ -69,7 +69,7 @@ async function makeExcelWorkbook(scmNo) {
 
   //정산서 양식의 세번째 시트인 주문번호별 판매금액 합계와 이에 따른 배송비 계산 내용 작성
   const ws3 = wb.getWorksheet('MOO_KR_delivery')
-  let data3 = await getData(sql.deliverySql, [scmNo[0], scmNo[0]]);
+  let data3 = await getData(sql.deliverySql, [scmNo[0],scmNo[0]]);
   ws3.columns = [
     {key:'order_no', width: 25}, {key:'order_delivery_sno', width: 15}, {key:'order_delivery_fee', width: 15}
   ];
@@ -165,7 +165,7 @@ async function makeExcelWorkbook(scmNo) {
 //mysql(mariaDB) query 실행 후 query값을 반환해주는 function
 function getData(query, data) {
   return new Promise((resolve, reject) => {
-    connection.query(query, [data], (err, result) => {
+    connection.query(query, data, (err, result) => {
         return err ? reject(err) : resolve(result);
     });
   });

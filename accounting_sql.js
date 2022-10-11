@@ -5,7 +5,7 @@ module.exports = {
 	, insert (a.order_cellphone,6,2,'**') as customer_cellphone
 	, a.goods_code
 	, a.goods_name
-  , a.option_info
+   , a.option_info
 	, IF(substring(a.tax_free_flag,1,1) = "t","과세","면세") as tax_type
 	, a.invoice_no
 	, a.order_status
@@ -38,7 +38,8 @@ module.exports = {
     LEFT JOIN gododb.commission_codes c USING(commission_code)
     LEFT JOIN gododb.adjust_commissions d ON a.goods_no = d.goods_no
       AND IF((a.payment_date > d.start_date) AND (a.payment_date < d.end_date), d.adjust_commission, NULL) IS NOT NULL
-  WHERE a.scm_no = ? AND e.check_account IS NULL`,
+  WHERE a.scm_no = ? AND (month(a.delivery_date) = 7 OR month(a.delivery_date) = 8 OR month(a.delivery_date) = 9) 
+    AND e.check_account IS NULL`,
 
   deliverySql: `SELECT a.order_no
   , a.order_delivery_sno
