@@ -33,7 +33,7 @@ module.exports = {
     , @commission_fee:=round(@account_sale_price * @apply_commission,0) as commission_fee
     , @account_sale_price - @commission_fee as company_paid
   FROM gododb.accounting_sales a
-    LEFT JOIN gododb.august_accounted_sales e USING(sno) 
+    LEFT JOIN gododb.accounted_sales e USING(sno) 
     LEFT JOIN gododb.brand_codes b ON a.brand_code = b.brand_code
     LEFT JOIN gododb.commission_codes c USING(commission_code)
     LEFT JOIN gododb.adjust_commissions d ON a.goods_no = d.goods_no
@@ -48,7 +48,7 @@ module.exports = {
   WHERE a.scm_no = ? AND a.order_delivery_sno IN (
     SELECT a.order_delivery_sno
     FROM gododb.accounting_sales a 
-      LEFT JOIN gododb.august_delivery_fees b USING(order_delivery_sno)
+      LEFT JOIN gododb.accounted_delivery_fees b USING(order_delivery_sno)
     WHERE a.scm_no = ? AND b.check_account IS NULL
     GROUP BY a.order_delivery_sno)
   GROUP BY a.order_delivery_sno, a.order_no`,
@@ -58,7 +58,7 @@ module.exports = {
   , a.order_delivery_sno
   , a.delivery_fee
   FROM gododb.claim_delivery_fees a
-    LEFT JOIN gododb.august_delivery_fees b USING(order_delivery_sno)
+    LEFT JOIN gododb.accounted_delivery_fees b USING(order_delivery_sno)
   WHERE a.scm_no = ? AND b.check_account IS NULL`,
 
   exchangeSql: `SELECT b.brand_name
@@ -99,7 +99,7 @@ module.exports = {
     LEFT JOIN gododb.commission_codes c USING(commission_code)
     LEFT JOIN gododb.adjust_commissions d ON a.goods_no = d.goods_no
       AND IF((a.payment_date > d.start_date) AND (a.payment_date < d.end_date), d.adjust_commission, NULL) IS NOT NULL
-  WHERE a.scm_no = ? AND DATE(a.delivery_date) != "0000-00-00"`,
+  WHERE a.scm_no = ? AND a.invoice_no IS NOT NULL`,
 
   returnSql: `SELECT b.brand_name
 	, a.order_no 
@@ -139,6 +139,6 @@ module.exports = {
     LEFT JOIN gododb.commission_codes c USING(commission_code)
     LEFT JOIN gododb.adjust_commissions d ON a.goods_no = d.goods_no
       AND IF((a.payment_date > d.start_date) AND (a.payment_date < d.end_date), d.adjust_commission, NULL) IS NOT NULL
-  WHERE a.scm_no = ? AND DATE(a.delivery_date) != "0000-00-00"`,
+  WHERE a.scm_no = ? AND a.invoice_no IS NOT NULL`,
 
 }

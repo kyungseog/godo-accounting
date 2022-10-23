@@ -7,7 +7,7 @@ const sql = require('./accounting_sql');
 require('dotenv').config();
 
 const paidCheckYear = 2022;
-const paidCheckMonth = 9;
+const paidCheckMonth = 10;
 const spreadsheetId = process.env.SPREADSHEET_ID;
 
 const client = new google.auth.JWT(
@@ -44,13 +44,13 @@ async function gsRead(client) {
   let data = await gsapi.spreadsheets.values.get(readOption);
   let scmNoArray = data.data.values.map( r => [r[0], r[1]] );
 
-  for(let scmNo of scmNoArray){
-    console.log(scmNo);
-    await makeExcelWorkbook(scmNo);
+  for(let i = 0; i < scmNoArray.length; i++){
+    console.log(scmNoArray[i]);
+    await makeExcelWorkbook(scmNoArray[i], i);
   }
 }
 
-async function makeExcelWorkbook(scmNo) {
+async function makeExcelWorkbook(scmNo, indexNo) {
   const wb = new excel.Workbook();
   await wb.xlsx.readFile('정산서양식.xlsx');
   const columnSetting = [
@@ -97,69 +97,65 @@ async function makeExcelWorkbook(scmNo) {
   ws6.insertRows(5, data6, style = 'o+');
 
   //구글시트 작성을 위한 각 query 데이터의 합을 생성하는 query
-  // let salesSum = await getData(``);
-  // let deliveryFeeSum = await getData(``);
-  // let claimDeliveryFeeSum = await getData(``);
+  const saleTotalSum = await totalSum(data2);
+  const exchangeTotalSum = await totalSum(data5);
+  const returnTotalSum = await totalSum(data6);
 
-  // if(typeof deliveryFeeSum[0] == 'undefined' ){
-  //   deliveryFeeSum = [{_delivery_Fee: 0}];
-  // }
+  //배송비
+  const orderDeliveryFeeSum = data3 == [] ? 0 : data3.reduce( (acc, cur) => acc + cur.order_delivery_fee, 0 );
+  const claimDeliveryFeeSum = data4 == [] ? 0 : data4.reduce( (acc, cur) => acc + cur.delivery_fee, 0 );
 
-  // if(typeof claimDeliveryFeeSum[0] == 'undefined' ){
-  //   claimDeliveryFeeSum = [{_claim_delivery_fee: 0}];
-  // }
-
-  //정산서 양식의 첫번째 시트인 정산서 시트의 내용 작성
+  //정산서 양식의 첫번째 시트인 요약 시트의 내용 작성
   const ws1 = wb.getWorksheet('정산서');
-
-  // ws1.getCell('H2').value = calculateMonth;
+  ws1.getCell('H2').value = calculateMonth;
   ws1.getCell('C3').value = scmNo[1];
-  // ws1.getCell('D3').value = data1[0].supplier_name;
-  // ws1.getCell('C4').value = data1[0].supplier_user_name;
-  // ws1.getCell('C6').value = data1[0].supplier_user_email;
-  // ws1.getCell('C7').value = data1[0].free_shipping_price;
-  // ws1.getCell('D7').value = data1[0].shipping_fee;
-  // ws1.getCell('F7').value = data1[0].exchange_shipping_fee;
-  // ws1.getCell('H7').value = data1[0].return_shipping_fee;
-  // for(let i=0; i < data1.length; i++) {
-  //     ws1.getRow(8 + parseInt(i/5)).getCell(4 + i%5).value = data1[i].brand_name;
-  // }
 
-  // for (let i = 0; i < salesSum.length; i++){
-  //   if(salesSum[i].product_tax_type === '과세상품'){
-  //     ws1.getCell('E17').value = salesSum[i].quantity;
-  //     ws1.getCell('F17').value = salesSum[i]._sales_price;
-  //     ws1.getCell('G17').value = salesSum[i].commission_fee;
-  //     ws1.getCell('H17').value = salesSum[i]._paid_price;
-  //   }else{
-  //     ws1.getCell('E25').value = salesSum[i].quantity;
-  //     ws1.getCell('F25').value = salesSum[i]._sales_price;
-  //     ws1.getCell('G25').value = salesSum[i].commission_fee;
-  //     ws1.getCell('H25').value = salesSum[i]._paid_price;
-  //   }
-  // }
+  ws1.getCell('E11').value = saleTotalSum.taxationQuantity;
+  ws1.getCell('F11').value = saleTotalSum.taxationSalePrice;
+  ws1.getCell('G11').value = saleTotalSum.taxationCommissionFee;
+  ws1.getCell('H11').value = saleTotalSum.taxationCompanyPaid;
 
-  // ws1.getCell('H18').value = deliveryFeeSum[0]._delivery_fee;
-  // ws1.getCell('H19').value = claimDeliveryFeeSum[0]._claim_delivery_fee;
+  ws1.getCell('E12').value = (exchangeTotalSum.taxationQuantity + returnTotalSum.taxationQuantity) * -1;
+  ws1.getCell('F12').value = (exchangeTotalSum.taxationSalePrice + returnTotalSum.taxationSalePrice) * -1;
+  ws1.getCell('G12').value = (exchangeTotalSum.taxationCommissionFee + returnTotalSum.taxationCommissionFee) * -1;
+  ws1.getCell('H12').value = (exchangeTotalSum.taxationCompanyPaid + returnTotalSum.taxationCompanyPaid) * -1;
 
-  // ws1.getCell('H24').value = ws1.getCell('H17').value + ws1.getCell('H18').value + ws1.getCell('H19').value;
-  // ws1.getCell('H27').value = ws1.getCell('H25').value + ws1.getCell('H26').value;
+  ws1.getCell('H13').value = orderDeliveryFeeSum;
+  ws1.getCell('H14').value = claimDeliveryFeeSum;
 
-  // gsWrite(client,partnerCode,dataArray,salesSum,deliveryFeeSum,claimDeliveryFeeSum);//구글시트 작성용 function 호출
+  ws1.getCell('E21').value = saleTotalSum.taxfreeQuantity;
+  ws1.getCell('F21').value = saleTotalSum.taxfreeSalePrice;
+  ws1.getCell('G21').value = saleTotalSum.taxfreeCommissionFee;
+  ws1.getCell('H21').value = saleTotalSum.taxfreeCompanyPaid;
+
+  ws1.getCell('E22').value = (exchangeTotalSum.taxfreeQuantity + returnTotalSum.taxfreeQuantity) * -1;
+  ws1.getCell('F22').value = (exchangeTotalSum.taxfreeSalePrice + returnTotalSum.taxfreeSalePrice) * -1;
+  ws1.getCell('G22').value = (exchangeTotalSum.taxfreeCommissionFee + returnTotalSum.taxfreeCommissionFee) * -1;
+  ws1.getCell('H22').value = (exchangeTotalSum.taxfreeCompanyPaid + returnTotalSum.taxfreeCompanyPaid) * -1;
+
+  ws1.getCell('E10').value = ws1.getCell('E11').value + ws1.getCell('E12').value;
+  ws1.getCell('F10').value = ws1.getCell('F11').value + ws1.getCell('F12').value;
+  ws1.getCell('G10').value = ws1.getCell('G11').value + ws1.getCell('G12').value;
+  ws1.getCell('H10').value = ws1.getCell('H11').value + ws1.getCell('H12').value + ws1.getCell('H13').value + ws1.getCell('H14').value;
+
+  ws1.getCell('H19').value = ws1.getCell('H10').value + ws1.getCell('H15').value + ws1.getCell('H16').value + ws1.getCell('H17').value;
+
+  ws1.getCell('E20').value = ws1.getCell('E21').value + ws1.getCell('E22').value;
+  ws1.getCell('F20').value = ws1.getCell('F21').value + ws1.getCell('F22').value;
+  ws1.getCell('G20').value = ws1.getCell('G21').value + ws1.getCell('G22').value;
+  ws1.getCell('H20').value = ws1.getCell('H21').value + ws1.getCell('H22').value;
+
+  gsWrite(client, indexNo, saleTotalSum, exchangeTotalSum, returnTotalSum, orderDeliveryFeeSum, claimDeliveryFeeSum);//구글시트 작성용 function 호출
 
   await wb.xlsx.writeFile('./정산서/' + paidCheckMonth + '월정산_' + scmNo[0] + "_" + scmNo[1] + '.xlsx');
   
   console.log("정산서 생성 완료");
 
-  data1=[];
   data2=[];
   data3=[];
   data4=[];
   data5=[];
-  // salesSum=[];
-  // deliveryFeeSum=[];
-  // claimDeliveryFeeSum=[];
-  
+  data6=[];
 };
 
 //mysql(mariaDB) query 실행 후 query값을 반환해주는 function
@@ -171,40 +167,60 @@ function getData(query, data) {
   });
 }
 
+async function totalSum(data) {
+  const taxation = data.filter( d => d.tax_type == "과세");
+  const taxationQuantity = taxation == [] ? 0 : taxation.reduce( (acc, cur) => acc + cur.quantity, 0 );
+  const taxationTagPrice = taxation == [] ? 0 : taxation.reduce( (acc, cur) => acc + cur.tag_price, 0 );
+  const taxationSalePrice = taxation == [] ? 0 : taxation.reduce( (acc, cur) => acc + cur.account_sale_price, 0 );
+  const taxationCommissionFee = taxation == [] ? 0 : taxation.reduce( (acc, cur) => acc + cur.commission_fee, 0 );
+  const taxationCompanyPaid = taxation == [] ? 0 : taxation.reduce( (acc, cur) => acc + cur.company_paid, 0 );
+
+  const taxfree = data.filter( d => d.tax_type != "과세");
+  const taxfreeQuantity = taxfree == [] ? 0 : taxfree.reduce( (acc, cur) => acc + cur.quantity, 0 );
+  const taxfreeTagPrice = taxfree == [] ? 0 : taxfree.reduce( (acc, cur) => acc + cur.tag_price, 0 );
+  const taxfreeSalePrice = taxfree == [] ? 0 : taxfree.reduce( (acc, cur) => acc + cur.account_sale_price, 0 );
+  const taxfreeCommissionFee = taxfree == [] ? 0 : taxfree.reduce( (acc, cur) => acc + cur.commission_fee, 0 );
+  const taxfreeCompanyPaid = taxfree == [] ? 0 : taxfree.reduce( (acc, cur) => acc + cur.company_paid, 0 );
+
+  return {
+    taxationQuantity, 
+    taxationTagPrice, 
+    taxationSalePrice, 
+    taxationCommissionFee, 
+    taxationCompanyPaid,
+    taxfreeQuantity,
+    taxfreeTagPrice,
+    taxfreeSalePrice,
+    taxfreeCommissionFee,
+    taxfreeCompanyPaid
+  }
+}
+
 //구글시트에 정산서의 요약 내용을 작성해주는 function
-async function gsWrite(client,partnerCode,dataArray,salesSum,deliveryFeeSum,claimDeliveryFeeSum) {
+async function gsWrite(client, indexNo, saleTotalSum, exchangeTotalSum, returnTotalSum, orderDeliveryFeeSum, claimDeliveryFeeSum) {
   const gsapi = google.sheets({version : 'v4', auth : client});
 
-  let sheetRow = dataArray.indexOf(partnerCode) + 5;
+  let sheetRow = indexNo + 5;
   
   const writeOption = {
     spreadsheetId: spreadsheetId,
-    range: paidCheckYear + '-' + paidCheckMonth + '!G' + sheetRow,
+    range: paidCheckYear + '-' + paidCheckMonth + '!C' + sheetRow,
     valueInputOption: 'USER_ENTERED',
-    resource : {values : [[deliveryFeeSum[0]._delivery_fee,claimDeliveryFeeSum[0]._claim_delivery_fee]]}
+    resource : {values : [
+      [
+        saleTotalSum.taxationTagPrice - exchangeTotalSum.taxationTagPrice - returnTotalSum.taxationTagPrice,
+        saleTotalSum.taxationSalePrice - exchangeTotalSum.taxationSalePrice - returnTotalSum.taxationSalePrice,
+        saleTotalSum.taxationCommissionFee - exchangeTotalSum.taxationCommissionFee - returnTotalSum.taxationCommissionFee,
+        saleTotalSum.taxationCompanyPaid - exchangeTotalSum.taxationCompanyPaid - returnTotalSum.taxationCompanyPaid,
+        orderDeliveryFeeSum,
+        claimDeliveryFeeSum,
+        saleTotalSum.taxfreeTagPrice - exchangeTotalSum.taxfreeTagPrice - returnTotalSum.taxfreeTagPrice,
+        saleTotalSum.taxfreeSalePrice - exchangeTotalSum.taxfreeSalePrice - returnTotalSum.taxfreeSalePrice,
+        saleTotalSum.taxfreeCommissionFee - exchangeTotalSum.taxfreeCommissionFee - returnTotalSum.taxfreeCommissionFee,
+        saleTotalSum.taxfreeCompanyPaid - exchangeTotalSum.taxfreeCompanyPaid - returnTotalSum.taxfreeCompanyPaid,
+      ]
+    ]}
   };
 
   await gsapi.spreadsheets.values.update(writeOption);
-
-  let sheetRange = '';
-  let sheetValues = [];
-
-  for (let i = 0; i < salesSum.length; i++){
-    if(salesSum[i].product_tax_type === '과세상품'){
-      sheetRange = paidCheckYear + '-' + paidCheckMonth + '!C' + sheetRow;
-      sheetValues = [salesSum[i].order_price_amount,salesSum[i]._sales_price,salesSum[i].commission_fee,salesSum[i]._paid_price];
-    } else {
-      sheetRange = paidCheckYear + '-' + paidCheckMonth + '!I' + sheetRow;
-      sheetValues = [salesSum[i].order_price_amount,salesSum[i]._sales_price,salesSum[i].commission_fee,salesSum[i]._paid_price];
-    }
-
-    const writeOption = {
-        spreadsheetId: spreadsheetId,
-        range: sheetRange,
-        valueInputOption: 'USER_ENTERED',
-        resource : {values : [sheetValues]}
-    };
-    
-    await gsapi.spreadsheets.values.update(writeOption);
-  }
 }
